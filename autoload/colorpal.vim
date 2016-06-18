@@ -623,7 +623,17 @@ endfunction
 
 
 function! s:negative(hsl) abort
+  if a:hsl[1] < 0.1
+    let a:hsl[2] = 1.0 - a:hsl[2]
+  endif
   let a:hsl[0] += 180.0
+endfunction
+
+
+function! s:invert(hsl) abort
+  let a:hsl[0] += 180.0
+  let a:hsl[1] = 1.0 - a:hsl[1]
+  let a:hsl[2] = 1.0 - a:hsl[2]
 endfunction
 
 
@@ -899,6 +909,11 @@ endfunction
 
 function! colorpal#negative() abort
   call s:theme_adjust(function('s:negative'))
+endfunction
+
+
+function! colorpal#invert() abort
+  call s:theme_adjust(function('s:invert'))
 endfunction
 
 
