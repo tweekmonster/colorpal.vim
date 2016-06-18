@@ -338,6 +338,13 @@ function! s:rgbdist2(rgb1, rgb2) abort
 endfunction
 
 
+" Utility: Normalize degrees
+function! s:norm_degrees(d) abort
+  return fmod(abs(a:d), 360.0)
+  " return a:d - r * 360.0)
+endfunction
+
+
 
 " Convert a term color to an approximate RGB color
 function! s:term2rgb(c, ...) abort
@@ -449,17 +456,74 @@ endfunction
 function! s:hsv2rgb(hsv) abort
   let [h, s, v] = a:hsv
 
-  while h < 0.0
-    let h += 360.0
-  endwhile
-
-  while h >= 360.0
-    let h -= 360.0
-  endwhile
+  let h = s:norm_degrees(h)
+  let s = s:clamp(s, 0.0, 1.0)
+  let v = s:clamp(v, 0.0, 1.0)
 
   let c = v * s
   let x = c * (1 - abs(fmod(h / 60.0, 2.0) - 1.0))
   let m = v - c
+
+  if h < 60.0
+    let rgb = [c, x, 0.0]
+  elseif h < 120.0
+    let rgb = [x, c, 0.0]
+  elseif h < 180.0
+    let rgb = [0.0, c, x]
+  elseif h < 240.0
+    let rgb = [0.0, x, c]
+  elseif h < 300.0
+    let rgb = [x, 0.0, c]
+  elseif h < 360.0
+    let rgb = [c, 0.0, x]
+  endif
+
+  return map(rgb, 'float2nr(round((v:val + m) * 255.0))')
+endfunction
+
+
+" RGB -> HSL
+" Hue is expressed in degrees (0 to 359)
+function! s:rgb2hsl(rgb) abort
+  let [r, g, b] = map(copy(a:rgb), 'v:val / 255.0')
+  let min_c = s:fmin([r, g, b])
+  let max_c = s:fmax([r, g, b])
+  let delta = (max_c - min_c) * 1.0
+  let l = (max_c + min_c) / 2
+
+  if delta == 0.0
+    return [0.0, 0.0, l]
+  endif
+
+  if max_c == r
+    let h = fmod((g - b) / delta, 6.0)
+  elseif max_c == g
+    let h = ((b - r) / delta) + 2
+  else
+    let h = ((r - g) / delta) + 4
+  endif
+
+  let h = h * 60.0
+  let s = 0.0
+  if delta != 0.0
+    let s = delta / (1 - abs((2 * l) - 1))
+  endif
+
+  return [h, s, l]
+endfunction
+
+
+" HSL -> RGB
+function! s:hsl2rgb(hsl) abort
+  let [h, s, l] = a:hsl
+
+  let h = s:norm_degrees(h)
+  let s = s:clamp(s, 0.0, 1.0)
+  let l = s:clamp(l, 0.0, 1.0)
+
+  let c = (1 - abs((2 * l) - 1)) * s
+  let x = c * (1 - abs(fmod(h / 60.0, 2.0) - 1.0))
+  let m = l - c / 2
 
   if h < 60.0
     let rgb = [c, x, 0.0]
@@ -543,30 +607,30 @@ endfunction
 
 
 " Color adjustments.  Modifies in place.
-function! s:brighter(hsv, amount) abort
-  let a:hsv[2] = s:clamp(a:hsv[2] + (a:hsv[2] * a:amount), 0.0, 1.0)
+function! s:brighter(hsl, amount) abort
+  let a:hsl[1] += a:hsl[1] * -a:amount
 endfunction
 
 
-function! s:darker(hsv, amount) abort
-  let a:hsv[2] = s:clamp(a:hsv[2] + (a:hsv[2] * -a:amount), 0.0, 1.0)
+function! s:darker(hsl, amount) abort
+  let a:hsl[2] += a:hsl[2] * -a:amount
 endfunction
 
 
-function! s:lighter(hsv, amount) abort
-  let a:hsv[1] = s:clamp(a:hsv[1] + (a:hsv[1] * -a:amount), 0.0, 1.0)
+function! s:lighter(hsl, amount) abort
+  let a:hsl[2] += a:hsl[2] * a:amount
 endfunction
 
 
-function! s:negative(hsv) abort
-  let a:hsv[0] += 180.0
+function! s:negative(hsl) abort
+  let a:hsl[0] += 180.0
 endfunction
 
 
-function! s:complement(hsv) abort
-  let rgb = s:hsv2rgb(a:hsv)
+function! s:complement(hsl) abort
+  let rgb = s:hsl2rgb(a:hsl)
   let comp = s:ryb2rgb(map(s:rgb2ryb(rgb), 'sqrt(65025 - pow(v:val, 2))'))
-  let [a:hsv[0], a:hsv[1], a:hsv[2]] = s:rgb2hsv(comp)
+  let [a:hsl[0], a:hsl[1], a:hsl[2]] = s:rgb2hsl(comp)
 endfunction
 
 
@@ -648,21 +712,21 @@ function! colorpal#parse_name(name) abort
 
   if len(parts) > 1
     let rgb = s:hex2rgb(chex)
-    let hsv = s:rgb2hsv(rgb)
+    let hsl = s:rgb2hsl(rgb)
 
     for part in parts[1:]
       if part =~# '^\w\+[+-]=\?\%(\d*\.\)\?\d\+$'
         let op = matchstr(part, '[=+-]\+')
         let operand = split(part, op)
         " Hue, Saturation, Value - or - Color, White, Black
-        let a = stridx('hsvcwb', operand[0])
-        let hsv_i = a % 3
+        let a = stridx('hslcwb', operand[0])
+        let hsl_i = a % 3
 
-        if hsv_i != -1
-          let hsv_a = str2float(operand[1])
+        if hsl_i != -1
+          let hsl_a = str2float(operand[1])
           " All values are converted to the 0.0...1.0 scale except for Hue.
-          if operand[1] !~# '\.' && hsv_i != 0
-            let hsv_a = (hsv_a / 100.0)
+          if operand[1] !~# '\.' && hsl_i != 0
+            let hsl_a = (hsl_a / 100.0)
           endif
 
           let m = op[0] ==# '+' ? 1 : -1
@@ -671,39 +735,39 @@ function! colorpal#parse_name(name) abort
             let m = m * -1
           endif
 
-          let hsv_a = hsv_a * m
+          let hsl_a = hsl_a * m
 
           if op[1] ==# '='
-            let val = hsv[hsv_i] + (hsv[hsv_i] * hsv_a)
+            let val = hsl[hsl_i] + (hsl[hsl_i] * hsl_a)
           else
-            let val = hsv[hsv_i] + hsv_a
+            let val = hsl[hsl_i] + hsl_a
           endif
 
-          if hsv_i == 0
-            let hsv[hsv_i] = val
+          if hsl_i == 0
+            let hsl[hsl_i] = val
           else
-            let hsv[hsv_i] = s:clamp(val, 0.0, 1.0)
+            let hsl[hsl_i] = s:clamp(val, 0.0, 1.0)
           endif
         endif
       elseif part =~# '^li\%[ght]'
         " Decrease the saturation
-        call s:lighter(hsv, 0.3)
+        call s:lighter(hsl, 0.3)
       elseif part =~# '^da\%[rk]'
         " Decrease the value
-        call s:darker(hsv, 0.3)
+        call s:darker(hsl, 0.3)
       elseif part =~# '^br\%[ight]'
         " Increase the value
-        call s:brighter(hsv, 0.3)
+        call s:brighter(hsl, 0.3)
       elseif part =~# '^ne\%[gative]'
         " Get the negative (opposite color).  Red -> Cyan
-        call s:negative(hsv)
+        call s:negative(hsl)
       elseif part =~# '^co\%[mplement]'
         " Get the RYB complement (opposite color).  Red -> Green
-        call s:complement(hsv)
+        call s:complement(hsl)
       endif
     endfor
 
-    let rgb = s:hsv2rgb(hsv)
+    let rgb = s:hsl2rgb(hsl)
     let chex = s:rgb2hex(rgb)
     let cterm = s:rgb2term(rgb)
   endif
@@ -813,17 +877,17 @@ function! s:theme_adjust(func, ...) abort
     let hl = 'highlight '.group
 
     if !empty(guifg)
-      let hsv = s:rgb2hsv(s:hex2rgb(guifg))
-      call call(a:func, [hsv] + a:000)
-      let rgb = s:hsv2rgb(hsv)
+      let hsl = s:rgb2hsl(s:hex2rgb(guifg))
+      call call(a:func, [hsl] + a:000)
+      let rgb = s:hsl2rgb(hsl)
       let cterm = s:rgb2term(rgb)
       let hl .= ' ctermfg='.cterm.' guifg=#'.s:rgb2hex(rgb)
     endif
 
     if !empty(guibg)
-      let hsv = s:rgb2hsv(s:hex2rgb(guibg))
-      call call(a:func, [hsv] + a:000)
-      let rgb = s:hsv2rgb(hsv)
+      let hsl = s:rgb2hsl(s:hex2rgb(guibg))
+      call call(a:func, [hsl] + a:000)
+      let rgb = s:hsl2rgb(hsl)
       let cterm = s:rgb2term(rgb)
       let hl .= ' ctermbg='.cterm.' guibg=#'.s:rgb2hex(rgb)
     endif
