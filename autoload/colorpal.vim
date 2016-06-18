@@ -828,12 +828,6 @@ function! colorpal#begin() abort
 endfunction
 
 
-function! colorpal#finish() abort
-  " Note: This is a stub.  There are plans to make this mandatory for taking a
-  " snapshot of the theme to make runtime color adjustments more accurate.
-endfunction
-
-
 function! colorpal#highlight(bang, group, ...) abort
   let fg = ''
   let bg = ''

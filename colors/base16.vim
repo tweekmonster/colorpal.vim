@@ -185,5 +185,3 @@ CPHL SpellBad - base00 undercurl
 CPHL SpellLocal - base00 undercurl
 CPHL SpellCap - base00 undercurl
 CPHL SpellRare - base00 undercurl
-
-call colorpal#finish()
