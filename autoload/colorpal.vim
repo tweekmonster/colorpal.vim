@@ -790,16 +790,16 @@ function! colorpal#parse_name(name) abort
         endif
       elseif part =~# '^li\%[ght]'
         " Decrease the saturation
-        call s:lighter(hsl, 0.3)
+        call s:lighter(hsl, 0.1)
       elseif part =~# '^da\%[rk]'
         " Decrease the lightness
-        call s:darker(hsl, 0.3)
+        call s:darker(hsl, 0.1)
       elseif part =~# '^br\%[ight]'
         " Increase HSV value
-        call s:brighter(hsl, 0.3)
+        call s:brighter(hsl, 0.1)
       elseif part =~# '^di\%[m]'
         " Decrease HSV value
-        call s:dimmer(hsl, 0.3)
+        call s:dimmer(hsl, 0.1)
       elseif part =~# '^ne\%[gative]'
         " Get the negative (opposite color).  Red -> Cyan
         call s:negative(hsl)
@@ -885,57 +885,114 @@ endfunction
 
 
 function! s:theme_adjust(func, ...) abort
-  " Take a snapshot of the original theme to restore upper and lower values?
-  redir => hltext
-  silent highlight
-  redir END
+  if !exists('s:hl_snapshot')
+    " The snapshot stores the HSL values so that the values can go beyond
+    " limits.  This way, adjustments remain consistent to the original color.
+    " Color adjustments that clamp the values will result in lost color
+    " information.
+    redir => hltext
+    silent highlight
+    redir END
+    let s:hl_snapshot = {}
+    let s:hl_orig = []
 
-  for hl in split(hltext, "\n")
-    let group = matchstr(hl, '^\S\+')
-    if empty(group)
-      continue
-    endif
+    for hl in split(hltext, "\n")
+      let group = matchstr(hl, '^\S\+')
+      if empty(group)
+        continue
+      endif
 
-    let ctermfg = matchstr(hl, 'ctermfg=\zs\d\+')
-    let ctermbg = matchstr(hl, 'ctermbg=\zs\d\+')
-    let guifg = tolower(matchstr(hl, 'guifg=#\zs\w\+'))
-    let guibg = tolower(matchstr(hl, 'guibg=#\zs\w\+'))
+      let ctermfg = matchstr(hl, 'ctermfg=\zs\d\+')
+      let ctermbg = matchstr(hl, 'ctermbg=\zs\d\+')
+      let guifg = tolower(matchstr(hl, 'guifg=#\zs\w\+'))
+      let guibg = tolower(matchstr(hl, 'guibg=#\zs\w\+'))
 
-    let guifg = get(s:color_names, guifg, guifg)
-    let guibg = get(s:color_names, guibg, guibg)
+      let orig = 'highlight '.group
 
-    if empty(guifg) && !empty(ctermfg)
-      let guifg = s:rgb2hex(s:term2rgb(ctermfg))
-    endif
+      if !empty(ctermfg)
+        let orig .= ' ctermfg='.ctermfg
+      endif
 
-    if empty(guibg) && !empty(ctermbg)
-      let guibg = s:rgb2hex(s:term2rgb(ctermbg))
-    endif
+      if !empty(ctermbg)
+        let orig .= ' ctermbg='.ctermbg
+      endif
 
-    if empty(guifg.guibg)
+      if !empty(guifg)
+        let orig .= ' guifg=#'.guifg
+      endif
+
+      if !empty(guibg)
+        let orig .= ' guibg=#'.guibg
+      endif
+
+      let guifg = get(s:color_names, guifg, guifg)
+      let guibg = get(s:color_names, guibg, guibg)
+
+      if empty(guifg) && !empty(ctermfg)
+        let guifg = s:rgb2hex(s:term2rgb(ctermfg))
+      endif
+
+      if empty(guibg) && !empty(ctermbg)
+        let guibg = s:rgb2hex(s:term2rgb(ctermbg))
+      endif
+
+      if empty(guifg.guibg)
+        continue
+      endif
+
+      if !empty(guifg)
+        let fghsl = s:rgb2hsl(s:hex2rgb(guifg))
+      else
+        let fghsl = []
+      endif
+
+      if !empty(guibg)
+        let bghsl = s:rgb2hsl(s:hex2rgb(guibg))
+      else
+        let bghsl = []
+      endif
+
+      let s:hl_snapshot[group] = [fghsl, bghsl]
+      call add(s:hl_orig, orig)
+    endfor
+  endif
+
+  for [group, colors] in items(s:hl_snapshot)
+    let [fghsl, bghsl] = colors
+
+    if empty(fghsl + bghsl)
       continue
     endif
 
     let hl = 'highlight '.group
 
-    if !empty(guifg)
-      let hsl = s:rgb2hsl(s:hex2rgb(guifg))
-      call call(a:func, [hsl] + a:000)
-      let rgb = s:hsl2rgb(hsl)
+    if !empty(fghsl)
+      call call(a:func, [fghsl] + a:000)
+      let rgb = s:hsl2rgb(fghsl)
       let cterm = s:rgb2term(rgb)
       let hl .= ' ctermfg='.cterm.' guifg=#'.s:rgb2hex(rgb)
     endif
 
-    if !empty(guibg)
-      let hsl = s:rgb2hsl(s:hex2rgb(guibg))
-      call call(a:func, [hsl] + a:000)
-      let rgb = s:hsl2rgb(hsl)
+    if !empty(bghsl)
+      call call(a:func, [bghsl] + a:000)
+      let rgb = s:hsl2rgb(bghsl)
       let cterm = s:rgb2term(rgb)
       let hl .= ' ctermbg='.cterm.' guibg=#'.s:rgb2hex(rgb)
     endif
 
     execute hl
   endfor
+endfunction
+
+
+function! colorpal#reset() abort
+  if exists('s:hl_orig')
+    for hl in s:hl_orig
+      execute hl
+    endfor
+  endif
+  unlet! s:hl_orig
+  unlet! s:hl_snapshot
 endfunction
 
 
