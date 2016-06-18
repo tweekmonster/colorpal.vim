@@ -607,18 +607,47 @@ endfunction
 
 
 " Color adjustments.  Modifies in place.
-function! s:brighter(hsl, amount) abort
-  let a:hsl[1] += a:hsl[1] * -a:amount
+function! s:hsl2hsv(hsl) abort
+  return s:rgb2hsv(s:hsl2rgb(a:hsl))
 endfunction
 
 
-function! s:darker(hsl, amount) abort
-  let a:hsl[2] += a:hsl[2] * -a:amount
+function! s:hsv2hsl(hsv) abort
+  return s:rgb2hsl(s:hsv2rgb(a:hsv))
+endfunction
+
+
+function! s:brighter(hsl, amount) abort
+  let hsv = s:hsl2hsv(a:hsl)
+  let hsv[2] += hsv[2] * a:amount
+  let [a:hsl[0], a:hsl[1], a:hsl[2]] = s:hsv2hsl(hsv)
+endfunction
+
+
+function! s:dimmer(hsl, amount) abort
+  let hsv = s:hsl2hsv(a:hsl)
+  let hsv[2] += hsv[2] * -a:amount
+  let [a:hsl[0], a:hsl[1], a:hsl[2]] = s:hsv2hsl(hsv)
+endfunction
+
+
+function! s:saturate(hsl, amount) abort
+  let a:hsl[1] += a:hsl[1] * a:amount
+endfunction
+
+
+function! s:desaturate(hsl, amount) abort
+  let a:hsl[1] += a:hsl[1] * -a:amount
 endfunction
 
 
 function! s:lighter(hsl, amount) abort
   let a:hsl[2] += a:hsl[2] * a:amount
+endfunction
+
+
+function! s:darker(hsl, amount) abort
+  let a:hsl[2] += a:hsl[2] * -a:amount
 endfunction
 
 
@@ -763,11 +792,14 @@ function! colorpal#parse_name(name) abort
         " Decrease the saturation
         call s:lighter(hsl, 0.3)
       elseif part =~# '^da\%[rk]'
-        " Decrease the value
+        " Decrease the lightness
         call s:darker(hsl, 0.3)
       elseif part =~# '^br\%[ight]'
-        " Increase the value
+        " Increase HSV value
         call s:brighter(hsl, 0.3)
+      elseif part =~# '^di\%[m]'
+        " Decrease HSV value
+        call s:dimmer(hsl, 0.3)
       elseif part =~# '^ne\%[gative]'
         " Get the negative (opposite color).  Red -> Cyan
         call s:negative(hsl)
@@ -922,6 +954,21 @@ function! colorpal#complement() abort
 endfunction
 
 
+function! colorpal#saturate() abort
+  call s:theme_adjust(function('s:saturate'), 0.1)
+endfunction
+
+
+function! colorpal#desaturate() abort
+  call s:theme_adjust(function('s:desaturate'), 0.1)
+endfunction
+
+
+function! colorpal#lighten() abort
+  call s:theme_adjust(function('s:lighter'), 0.1)
+endfunction
+
+
 function! colorpal#darken() abort
   call s:theme_adjust(function('s:darker'), 0.1)
 endfunction
@@ -932,6 +979,6 @@ function! colorpal#brighten() abort
 endfunction
 
 
-function! colorpal#lighten() abort
-  call s:theme_adjust(function('s:lighter'), 0.1)
+function! colorpal#dim() abort
+  call s:theme_adjust(function('s:dimmer'), 0.1)
 endfunction
