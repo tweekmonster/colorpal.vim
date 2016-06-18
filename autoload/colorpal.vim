@@ -592,7 +592,32 @@ endfunction
 
 function! colorpal#load() abort
   let theme = get(g:, 'colorpal_palette', s:default_palette)
-  let s:user_palette = s:build_palette(theme)
+  if type(theme) == 4
+    let s:user_palette = s:build_palette(theme)
+    return
+  endif
+
+  " Assume a string is a theme file
+  let s:user_palette = {}
+  let themefile = s:plugin_base.'/data/'.theme.'.yml'
+  if !filereadable(themefile)
+    echohl ErrorMsg
+    echo '[colorpal] Theme file was not found:' theme
+    echohl None
+    return
+  endif
+
+  let palette = {}
+  for line in readfile(themefile)
+    let name = matchstr(line, '^[^:]\+')
+    let hex = matchstr(line, '"\zs\x\{6}\ze"')
+    if empty(name) || empty(hex)
+      continue
+    endif
+    let palette[name] = tolower(hex)
+  endfor
+
+  let s:user_palette = s:build_palette(palette)
 endfunction
 
 
