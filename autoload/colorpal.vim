@@ -410,6 +410,7 @@ function! s:rgb2term(rgb) abort
   return 16 + (36 * qr) + (6 * qg) + qb
 endfunction
 
+
 " RGB -> Hexadecimal string
 function! s:rgb2hex(rgb) abort
   return join(map(copy(a:rgb), 'printf("%02x", v:val)'), '')
@@ -543,6 +544,18 @@ function! s:hsl2rgb(hsl) abort
 endfunction
 
 
+" HSL -> HSV
+function! s:hsl2hsv(hsl) abort
+  return s:rgb2hsv(s:hsl2rgb(a:hsl))
+endfunction
+
+
+" HSV -> HSL
+function! s:hsv2hsl(hsv) abort
+  return s:rgb2hsl(s:hsv2rgb(a:hsv))
+endfunction
+
+
 " RGB -> RYB
 " https://github.com/bahamas10/node-rgb2ryb/blob/master/rgb2ryb.js
 function! s:rgb2ryb(rgb) abort
@@ -607,30 +620,6 @@ endfunction
 
 
 " Color adjustments.  Modifies in place.
-function! s:hsl2hsv(hsl) abort
-  return s:rgb2hsv(s:hsl2rgb(a:hsl))
-endfunction
-
-
-function! s:hsv2hsl(hsv) abort
-  return s:rgb2hsl(s:hsv2rgb(a:hsv))
-endfunction
-
-
-function! s:brighter(hsl, amount) abort
-  let hsv = s:hsl2hsv(a:hsl)
-  let hsv[2] += hsv[2] * a:amount
-  let [a:hsl[0], a:hsl[1], a:hsl[2]] = s:hsv2hsl(hsv)
-endfunction
-
-
-function! s:dimmer(hsl, amount) abort
-  let hsv = s:hsl2hsv(a:hsl)
-  let hsv[2] += hsv[2] * -a:amount
-  let [a:hsl[0], a:hsl[1], a:hsl[2]] = s:hsv2hsl(hsv)
-endfunction
-
-
 function! s:saturate(hsl, amount) abort
   let a:hsl[1] += a:hsl[1] * a:amount
 endfunction
@@ -648,6 +637,18 @@ endfunction
 
 function! s:darker(hsl, amount) abort
   let a:hsl[2] += a:hsl[2] * -a:amount
+endfunction
+
+
+function! s:brighter(hsl, amount) abort
+  call s:saturate(a:hsl, a:amount)
+  call s:lighter(a:hsl, a:amount)
+endfunction
+
+
+function! s:dimmer(hsl, amount) abort
+  call s:desaturate(a:hsl, a:amount)
+  call s:darker(a:hsl, a:amount)
 endfunction
 
 
@@ -1011,31 +1012,31 @@ function! colorpal#complement() abort
 endfunction
 
 
-function! colorpal#saturate() abort
-  call s:theme_adjust(function('s:saturate'), 0.1)
+function! colorpal#saturate(count) abort
+  call s:theme_adjust(function('s:saturate'), 0.1 * (a:count ? a:count : 1))
 endfunction
 
 
-function! colorpal#desaturate() abort
-  call s:theme_adjust(function('s:desaturate'), 0.1)
+function! colorpal#desaturate(count) abort
+  call s:theme_adjust(function('s:desaturate'), 0.1 * (a:count ? a:count : 1))
 endfunction
 
 
-function! colorpal#lighten() abort
-  call s:theme_adjust(function('s:lighter'), 0.1)
+function! colorpal#lighten(count) abort
+  call s:theme_adjust(function('s:lighter'), 0.1 * (a:count ? a:count : 1))
 endfunction
 
 
-function! colorpal#darken() abort
-  call s:theme_adjust(function('s:darker'), 0.1)
+function! colorpal#darken(count) abort
+  call s:theme_adjust(function('s:darker'), 0.1 * (a:count ? a:count : 1))
 endfunction
 
 
-function! colorpal#brighten() abort
-  call s:theme_adjust(function('s:brighter'), 0.1)
+function! colorpal#brighten(count) abort
+  call s:theme_adjust(function('s:brighter'), 0.1 * (a:count ? a:count : 1))
 endfunction
 
 
-function! colorpal#dim() abort
-  call s:theme_adjust(function('s:dimmer'), 0.1)
+function! colorpal#dim(count) abort
+  call s:theme_adjust(function('s:dimmer'), 0.1 * (a:count ? a:count : 1))
 endfunction
