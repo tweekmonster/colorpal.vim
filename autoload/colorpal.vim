@@ -833,6 +833,13 @@ endfunction
 
 
 function! colorpal#highlight(bang, group, ...) abort
+  if a:group == 'link'
+    if a:0 > 1
+      execute 'highlight' (a:bang ? 'default' : '') 'link' a:1 a:2
+    endif
+    return
+  endif
+
   let fg = ''
   let bg = ''
   let style = ''
