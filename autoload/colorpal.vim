@@ -390,7 +390,7 @@ function! s:rgb2term(rgb) abort
   let [qr, qg, qb] = map(copy(a:rgb), 'v:val < 48 ? 0 : v:val < 114 ? 1 : (v:val - 35) / 40')
   let [cr, cg, cb] = map([qr, qg, qb], 's:cube_6[v:val]')
 
-  if cr == qr && cg == qg && cb == qb
+  if cr == a:rgb[0] && cg == a:rgb[1] && cb == a:rgb[2]
     return 16 + (36 * qr) + (6 * qg) + qb
   endif
 
