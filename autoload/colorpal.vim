@@ -730,8 +730,8 @@ function! colorpal#parse_name(name) abort
     call colorpal#load()
   endif
 
-  if a:name == 'none'
-    return ['none', 'none']
+  if a:name ==# 'none'
+    return ['NONE', 'NONE']
   endif
 
   let parts = split(a:name, ',')
@@ -860,19 +860,21 @@ function! colorpal#highlight(bang, group, ...) abort
   let [ctermbg, guibg] = colorpal#parse_name(bg)
 
   if !empty(guifg)
-    if guifg != 'none'
-      let guifg = '#'.guifg
+    let fg = 'ctermfg='.ctermfg.' guifg='
+    if guifg !=? 'none'
+      let fg .= '#'
     endif
-    let fg = 'ctermfg='.ctermfg.' guifg='.guifg
+    let fg .= guifg
   else
     let fg = ''
   endif
 
   if !empty(guibg)
-    if guibg != 'none'
-      let guibg = '#'.guibg
+    let bg = 'ctermbg='.ctermbg.' guibg='
+    if guibg !=? 'none'
+      let bg .= '#'
     endif
-    let bg = 'ctermbg='.ctermbg.' guibg='.guibg
+    let bg .= guibg
   else
     let bg = ''
   endif
