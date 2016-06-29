@@ -940,8 +940,9 @@ endfunction
 
 function! colorpal#set_theme(name) abort
   unlet! s:user_palette
+  unlet! g:colors_name
   call colorpal#load(a:name)
-  colorscheme base16
+  execute 'colorscheme base16'.&background
 endfunction
 
 
@@ -957,14 +958,6 @@ function! colorpal#parse_name(name) abort
   let parts = split(a:name, ',')
   if empty(a:name) || a:name == '-' || empty(parts)
     return ['', '']
-  endif
-
-  if exists('g:colors_name') && g:colors_name == 'base16'
-        \ && parts[0] =~# '^base\d\{2}$' && g:colorpal_background == 'light'
-    let bi = str2nr(matchstr(parts[0], '\d\{2}$'))
-    if bi < 8
-      let parts[0] = printf('base%02d', abs(bi - 7))
-    endif
   endif
 
   let name = join(parts, ',')

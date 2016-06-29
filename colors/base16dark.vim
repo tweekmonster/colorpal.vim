@@ -5,8 +5,8 @@ if exists('syntax_on')
 endif
 
 " 'background' gets reset for some reason
-let g:colorpal_background = &background
-let g:colors_name = 'base16'
+set background=dark
+let g:colors_name = 'base16dark'
 
 " Vim editor colors
 CPHL Bold - - bold
