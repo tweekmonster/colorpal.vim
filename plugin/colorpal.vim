@@ -9,3 +9,12 @@ command! -count -nargs=0 CPLighter call colorpal#lighten(<count>)
 command! -count -nargs=0 CPDarker call colorpal#darken(<count>)
 command! -count -nargs=0 CPBrighter call colorpal#brighten(<count>)
 command! -count -nargs=0 CPDimmer call colorpal#dim(<count>)
+
+highlight default link CPHLCommand vimCommand
+highlight default link CPHLGroup vimHiGroup
+highlight default link CPHLBlank Special
+highlight default link CPHLStyle Keyword
+highlight default link CPHLMod Special
+highlight default link CPHLVMod Special
+highlight default link CPHLVModOp Operator
+highlight default link CPHLNumber Number
