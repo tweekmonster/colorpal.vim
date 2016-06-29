@@ -694,8 +694,13 @@ function! s:build_palette(theme) abort
 endfunction
 
 
-function! colorpal#load() abort
-  let theme = get(g:, 'colorpal_palette', s:default_palette)
+function! colorpal#load(...) abort
+  if a:0
+    let theme = a:1
+  else
+    let theme = get(g:, 'colorpal_palette', s:default_palette)
+  endif
+
   if type(theme) == 4
     let s:user_palette = s:build_palette(theme)
     return
@@ -725,6 +730,13 @@ function! colorpal#load() abort
 endfunction
 
 
+function! colorpal#set_theme(name) abort
+  unlet! s:user_palette
+  call colorpal#load(a:name)
+  colorscheme base16
+endfunction
+
+
 function! colorpal#parse_name(name) abort
   if !exists('s:user_palette')
     call colorpal#load()
@@ -739,14 +751,23 @@ function! colorpal#parse_name(name) abort
     return ['', '']
   endif
 
-  " Try the cache first
-  if has_key(s:user_palette, a:name)
-    return s:user_palette[a:name]
+  if exists('g:colors_name') && g:colors_name == 'base16'
+        \ && parts[0] =~# '^base\d\{2}$' && g:bg == 'light'
+    let bi = str2nr(matchstr(parts[0], '\d\{2}$'))
+    if bi < 8
+      let parts[0] = printf('base%02d', abs(bi - 7))
+    endif
   endif
 
+  let name = join(parts, ',')
+
+  " Try the cache first
+  if has_key(s:user_palette, name)
+    return s:user_palette[name]
+  endif
 
   if parts[0] =~# '^#'
-    let chex = substitute(a:name, '^#\+', '', 'g')
+    let chex = substitute(name, '^#\+', '', 'g')
     let cterm = s:rgb2term(s:hex2rgb(chex))
   elseif !has_key(s:user_palette, parts[0])
     return ['', '']
@@ -820,8 +841,8 @@ function! colorpal#parse_name(name) abort
   endif
 
   " Cache the parsed name so it doesn't need to be evaluated again.
-  let s:user_palette[a:name] = [cterm, chex]
-  return s:user_palette[a:name]
+  let s:user_palette[name] = [cterm, chex]
+  return s:user_palette[name]
 endfunction
 
 

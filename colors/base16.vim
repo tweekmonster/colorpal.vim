@@ -4,7 +4,8 @@ if exists('syntax_on')
   syntax reset
 endif
 
-set background=dark
+" 'background' gets reset for some reason
+let g:colorpal_background = &background
 let g:colors_name = 'base16'
 
 " Vim editor colors
