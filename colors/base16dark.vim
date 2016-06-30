@@ -1,11 +1,10 @@
 call colorpal#begin()
+set background=dark
 highlight clear
 if exists('syntax_on')
   syntax reset
 endif
 
-" 'background' gets reset for some reason
-set background=dark
 let g:colors_name = 'base16dark'
 
 " Vim editor colors

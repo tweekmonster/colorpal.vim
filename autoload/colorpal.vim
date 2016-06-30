@@ -938,11 +938,19 @@ function! colorpal#load(...) abort
 endfunction
 
 
+function! colorpal#theme_compl(...) abort
+  let compl = []
+  for line in split(glob(s:plugin_base.'/data/**/*.yml'), "\n")
+    call add(compl, matchstr(fnamemodify(line, ':r'), s:plugin_base.'/data/\zs.*'))
+  endfor
+  return join(compl, "\n")
+endfunction
+
+
 function! colorpal#set_theme(name) abort
   unlet! s:user_palette
-  unlet! g:colors_name
   call colorpal#load(a:name)
-  execute 'colorscheme base16'.&background
+  execute 'colorscheme' g:colors_name
 endfunction
 
 

@@ -9,6 +9,7 @@ command! -count -nargs=0 CPLighter call colorpal#lighten(<count>)
 command! -count -nargs=0 CPDarker call colorpal#darken(<count>)
 command! -count -nargs=0 CPBrighter call colorpal#brighten(<count>)
 command! -count -nargs=0 CPDimmer call colorpal#dim(<count>)
+command! -nargs=1 -complete=custom,colorpal#theme_compl CPTheme call colorpal#set_theme('<args>')
 
 highlight default link CPHLCommand vimCommand
 highlight default link CPHLGroup vimHiGroup
