@@ -979,7 +979,13 @@ function! colorpal#parse_name(name) abort
     let chex = substitute(name, '^#\+', '', 'g')
     let cterm = s:rgb2term(s:hex2rgb(chex))
   elseif !has_key(s:user_palette, parts[0])
-    return ['', '']
+    if has_key(s:color_names, parts[0])
+      let cterm = s:rgb2term(s:hex2rgb(s:color_names[parts[0]]))
+      let chex = s:color_names[parts[0]]
+      let s:user_palette[parts[0]] = [cterm, chex]
+    else
+      return ['', '']
+    endif
   else
     let [cterm, chex] = s:user_palette[parts[0]]
   endif
