@@ -830,6 +830,83 @@ endfunction
 " End of Color Conversion Functions
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
+" Color Blending Functions
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+function! s:blend_multiply(a, b) abort
+  return a:a * a:b
+endfunction
+
+
+function! s:blend_screen(a, b) abort
+  return a:a + a:b - a:a * a:b
+endfunction
+
+
+function! s:blend_add(a, b) abort
+  return s:fmin([1.0, a:a + a:b])
+endfunction
+
+
+function! s:blend_subtract(a, b) abort
+  return s:fmax([0.0, a:a - a:b])
+endfunction
+
+
+function! s:blend_average(a, b) abort
+  return (a:a + a:b) / 2.0
+endfunction
+
+
+function! s:blend_overlay(a, b) abort
+  let a = a:a * 2.0
+  if a <= 1.0
+    return a * a:b
+  endif
+  return s:blend_screen(a - 1.0, a:b)
+endfunction
+
+
+function! s:blend_difference(a, b) abort
+  return abs(a:a - a:b)
+endfunction
+
+
+function! s:blend_exclusion(a, b) abort
+  return a:a + a:b - 2.0 * a:a * a:b
+endfunction
+
+
+function! s:blend_negation(a, b) abort
+  return 1.0 - abs(a:a + a:b - 1.0)
+endfunction
+
+
+function! s:blend(rgb1, rgb2, alpha, func) abort
+  let rgb1 = map(copy(a:rgb1), 'v:val / 255.0')
+  let rgb2 = map(copy(a:rgb2), 'v:val / 255.0')
+  let rgb3 = [0.0, 0.0, 0.0]
+
+  " Typically, both colors will have an alpha channel that needs to blend.
+  " But, in this case, rgb1 is the background and is assumed to have an alpha
+  " of 1.0.  a:alpha is for rgb2 and is used to determine how much it is
+  " blended with rgb1.
+  let alpha = a:alpha + 1.0 * (1.0 - a:alpha)
+
+  for i in range(3)
+    let c = call(a:func, [rgb1[i], rgb2[i]])
+
+    if alpha > 0.0
+      let rgb3[i] = (a:alpha * rgb2[i] + 1.0 * (rgb1[i] - a:alpha * (rgb1[i] + rgb2[i] - c))) / alpha
+    else
+      let rgb3[i] = c
+    endif
+  endfor
+
+  let ret = map(copy(rgb3), 'float2nr(round(v:val * 255))')
+  return ret
+endfunction
+
 
 " Color adjustments.  Modifies in place.
 function! s:saturate(hsl, amount) abort
@@ -967,7 +1044,7 @@ function! colorpal#parse_name(name) abort
     return ['NONE', 'NONE']
   endif
 
-  let parts = split(a:name, ',')
+  let parts = split(a:name, '\%(([^)]\+\)\@<!,')
   if empty(a:name) || a:name == '-' || empty(parts)
     return ['', '']
   endif
@@ -993,6 +1070,8 @@ function! colorpal#parse_name(name) abort
   else
     let [cterm, chex] = s:user_palette[parts[0]]
   endif
+
+  let cache = 1
 
   if len(parts) > 1
     let rgb = s:hex2rgb(chex)
@@ -1033,6 +1112,36 @@ function! colorpal#parse_name(name) abort
             let hsl[hsl_i] = s:clamp(val, 0.0, 1.0)
           endif
         endif
+      elseif part =~# '^\w\+([^)]\+)$'
+        let func = 's:blend_'.matchstr(part, '\w\+')
+        if !exists('*'.func)
+          let cache = 0
+          continue
+        endif
+
+        let args = split(matchstr(part, '(\zs[^)]\+'), ',')
+        if len(args) > 1
+          if args[0] =~# '^#'
+            let bcolor = args[0]
+          elseif !has_key(s:user_palette, args[0])
+            if !has_key(s:color_names, args[0])
+              let cache = 0
+              continue
+            endif
+            let bcolor = s:color_names[args[0]]
+          else
+            let bcolor = s:user_palette[args[0]][1]
+          endif
+          let bval = str2float(args[1])
+          if args[1] !~# '\.'
+            let bval = bval / 100.0
+          endif
+
+          let rgb = s:hsl2rgb(hsl)
+          let brgb = s:hex2rgb(bcolor)
+          let brgb = s:blend(rgb, brgb, bval, function(func))
+          let [hsl[0], hsl[1], hsl[2]] = copy(s:rgb2hsl(brgb))
+        endif
       elseif part =~# '^li\%[ght]'
         " Decrease the saturation
         call s:lighter(hsl, 0.1)
@@ -1060,8 +1169,10 @@ function! colorpal#parse_name(name) abort
   endif
 
   " Cache the parsed name so it doesn't need to be evaluated again.
-  let s:user_palette[name] = [cterm, chex]
-  return s:user_palette[name]
+  if cache
+    let s:user_palette[name] = [cterm, chex]
+  endif
+  return [cterm, chex]
 endfunction
 
 
