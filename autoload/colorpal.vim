@@ -665,26 +665,28 @@ endfunction
 function! s:hsv2rgb(hsv) abort
   let [h, s, v] = a:hsv
 
-  let h = s:norm_degrees(h)
+  let h = s:norm_degrees(h) / 60.0
   let s = s:clamp(s, 0.0, 1.0)
   let v = s:clamp(v, 0.0, 1.0)
 
   let c = v * s
-  let x = c * (1 - abs(fmod(h / 60.0, 2.0) - 1.0))
+  let x = c * (1 - abs(fmod(h, 2.0) - 1.0))
   let m = v - c
 
-  if h < 60.0
+  if h < 1.0
     let rgb = [c, x, 0.0]
-  elseif h < 120.0
+  elseif h < 2.0
     let rgb = [x, c, 0.0]
-  elseif h < 180.0
+  elseif h < 3.0
     let rgb = [0.0, c, x]
-  elseif h < 240.0
+  elseif h < 4.0
     let rgb = [0.0, x, c]
-  elseif h < 300.0
+  elseif h < 5.0
     let rgb = [x, 0.0, c]
-  elseif h < 360.0
+  elseif h < 6.0
     let rgb = [c, 0.0, x]
+  else
+    let rgb = [0.0, 0.0, 0.0]
   endif
 
   return map(rgb, 'float2nr(round((v:val + m) * 255.0))')
@@ -705,7 +707,7 @@ function! s:rgb2hsl(rgb) abort
   endif
 
   if max_c == r
-    let h = fmod((g - b) / delta, 6.0)
+    let h = (g - b) / delta + (g < b ? 6.0 : 0.0)
   elseif max_c == g
     let h = ((b - r) / delta) + 2
   else
@@ -726,26 +728,28 @@ endfunction
 function! s:hsl2rgb(hsl) abort
   let [h, s, l] = a:hsl
 
-  let h = s:norm_degrees(h)
+  let h = s:norm_degrees(h) / 60.0
   let s = s:clamp(s, 0.0, 1.0)
   let l = s:clamp(l, 0.0, 1.0)
 
-  let c = (1 - abs((2 * l) - 1)) * s
-  let x = c * (1 - abs(fmod(h / 60.0, 2.0) - 1.0))
-  let m = l - c / 2
+  let c = (1.0 - abs(2.0 * l - 1.0)) * s
+  let x = c * (1.0 - abs(fmod(h, 2.0) - 1.0))
+  let m = l - (0.5 * c)
 
-  if h < 60.0
+  if h < 1.0
     let rgb = [c, x, 0.0]
-  elseif h < 120.0
+  elseif h < 2.0
     let rgb = [x, c, 0.0]
-  elseif h < 180.0
+  elseif h < 3.0
     let rgb = [0.0, c, x]
-  elseif h < 240.0
+  elseif h < 4.0
     let rgb = [0.0, x, c]
-  elseif h < 300.0
+  elseif h < 5.0
     let rgb = [x, 0.0, c]
-  elseif h < 360.0
+  elseif h < 6.0
     let rgb = [c, 0.0, x]
+  else
+    let rgb = [0.0, 0.0, 0.0]
   endif
 
   return map(rgb, 'float2nr(round((v:val + m) * 255.0))')
