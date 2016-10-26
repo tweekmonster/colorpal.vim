@@ -4,8 +4,8 @@ endif
 
 
 function! s:pal(fg, bg) abort
-  let fg = colorpal#parse_name(a:fg)
-  let bg = colorpal#parse_name(a:bg)
+  let fg = colorpal#parse_name(a:fg, 'fg')
+  let bg = colorpal#parse_name(a:bg, 'bg')
   return ['#'.fg[1], '#'.bg[1], fg[0], bg[0]]
 endfunction
 

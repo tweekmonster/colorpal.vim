@@ -1,4 +1,15 @@
 let s:plugin_base = expand('<sfile>:p:h:h')
+
+let s:styles = [
+      \ 'bold',
+      \ 'underline',
+      \ 'undercurl',
+      \ 'reverse',
+      \ 'inverse',
+      \ 'italic',
+      \ 'standout',
+      \ ]
+
 let s:default_palette = {
       \   'black':  '000000',
       \   'white':  'ffffff',
@@ -1035,7 +1046,7 @@ function! colorpal#set_theme(name) abort
 endfunction
 
 
-function! colorpal#parse_name(name) abort
+function! colorpal#parse_name(name, segment) abort
   if !exists('s:user_palette')
     call colorpal#load()
   endif
@@ -1060,7 +1071,10 @@ function! colorpal#parse_name(name) abort
     let chex = substitute(name, '^#\+', '', 'g')
     let cterm = s:rgb2term(s:hex2rgb(chex))
   elseif !has_key(s:user_palette, parts[0])
-    if has_key(s:color_names, parts[0])
+    if has_key(s:parsed_hl, parts[0])
+      " Get a color from previously parsed highlights.
+      let [cterm, chex] = s:parsed_hl[parts[0]][a:segment]
+    elseif has_key(s:color_names, parts[0])
       let cterm = s:rgb2term(s:hex2rgb(s:color_names[parts[0]]))
       let chex = s:color_names[parts[0]]
       let s:user_palette[parts[0]] = [cterm, chex]
@@ -1124,14 +1138,19 @@ function! colorpal#parse_name(name) abort
           if args[0] =~# '^#'
             let bcolor = args[0]
           elseif !has_key(s:user_palette, args[0])
-            if !has_key(s:color_names, args[0])
-              let cache = 0
-              continue
+            if has_key(s:parsed_hl, args[0])
+              let bcolor = s:parsed_hl[args[0]][a:segment][1]
+            else
+              if !has_key(s:color_names, args[0])
+                let cache = 0
+                continue
+              endif
+              let bcolor = s:color_names[args[0]]
             endif
-            let bcolor = s:color_names[args[0]]
           else
             let bcolor = s:user_palette[args[0]][1]
           endif
+
           let bval = str2float(args[1])
           if args[1] !~# '\.'
             let bval = bval / 100.0
@@ -1177,6 +1196,7 @@ endfunction
 
 
 function! colorpal#begin() abort
+  let s:parsed_hl = {}
   if !exists(':CPHL')
     command! -bang -nargs=+ CPHL call colorpal#highlight(<bang>0, <f-args>)
   endif
@@ -1207,8 +1227,8 @@ function! colorpal#highlight(bang, group, ...) abort
     let style = a:3
   endif
 
-  let [ctermfg, guifg] = colorpal#parse_name(fg)
-  let [ctermbg, guibg] = colorpal#parse_name(bg)
+  let [ctermfg, guifg] = colorpal#parse_name(fg, 'fg')
+  let [ctermbg, guibg] = colorpal#parse_name(bg, 'bg')
 
   if !empty(guifg)
     let fg = 'ctermfg='.ctermfg.' guifg='
@@ -1230,14 +1250,32 @@ function! colorpal#highlight(bang, group, ...) abort
     let bg = ''
   endif
 
+  let styles = []
+  let style_str = ''
+
   if !empty(style) && style != '-'
-    let style = 'cterm='.style.' gui='.style
-  else
-    let style = ''
+    for s in split(style, ',')
+      if index(s:styles, s) != -1
+        call add(styles, s)
+      elseif has_key(s:parsed_hl, s)
+        call extend(styles, s:parsed_hl[s].styles)
+      endif
+    endfor
+    if !empty(styles)
+      let sj = join(styles, ',')
+      let style_str = 'cterm='.sj.' gui='.sj
+    endif
   endif
 
-  if !empty(fg.bg.style)
-    let cline = a:group.' '.fg.' '.bg.' '.style
+  if !empty(fg.bg.style_str)
+    if !has_key(s:parsed_hl, a:group)
+      let s:parsed_hl[a:group] = {
+            \ 'fg': [ctermfg, guifg],
+            \ 'bg': [ctermbg, guibg],
+            \ 'styles': styles,
+            \ }
+    endif
+    let cline = a:group.' '.fg.' '.bg.' '.style_str
     execute 'highlight' (a:bang ? 'default' : '') cline
   endif
 endfunction
