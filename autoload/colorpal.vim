@@ -1029,6 +1029,46 @@ function! colorpal#load(...) abort
   let s:user_palette = s:build_palette(palette)
 endfunction
 
+function! s:command_filter(options, lead) abort
+  " Make sure it starts with what we want
+  " And doesn't contain spaces
+  return filter(copy(a:options),
+        \ {index, value ->
+          \ a:lead != '' ? matchstr(value, '^' . a:lead) != '' : v:true
+          \ && stridx(value, ' ') == -1})
+endfunction
+
+let g:_cp_hl_names = map(split(execute('highlight'), "\n"), {index, value -> split(value, " ")[0]})
+
+function! colorpal#cphl_compl(arglead, cmdline, cursorpos) abort
+  let line_split = split(a:cmdline, ' ')
+  let arg_number = len(line_split)
+
+  " TODO: Make sure we're in the right location...
+  if arg_number == 5
+      return s:command_filter(s:styles, a:arglead)
+  elseif (arg_number == 4) || (arg_number == 3) || (arg_number == 2 && a:arglead == '')
+    if stridx(a:arglead, ',') > 0
+      " TODO: Move the 'part =~# regex' -> into dictionary with keys so we can get the modifiers
+      return map(
+            \ s:command_filter(
+              \ ['light','dark','bright','dim','negative','complement'],
+              \ split(a:arglead, ',')[-1]
+              \ ),
+            \ {
+              \ index, value ->
+              \ join(split(a:arglead, ',')[0:-2], ',') . ',' . value
+              \ }
+            \ )
+    else
+      return s:command_filter(g:_cp_hl_names + keys(g:colorpal_palette) + keys(s:color_names), a:arglead)
+    endif
+  elseif arg_number == 2
+    return s:command_filter(g:_cp_hl_names, a:arglead)
+  elseif arg_number == 1 && a:arglead == ''
+    return g:_cp_hl_names
+  endif
+endfunction
 
 function! colorpal#theme_compl(...) abort
   let compl = []

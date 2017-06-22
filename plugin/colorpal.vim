@@ -1,4 +1,4 @@
-command! -bang -nargs=+ CPHL call colorpal#highlight(<bang>0, <f-args>)
+command! -bang -nargs=+ -complete=customlist,colorpal#cphl_compl CPHL call colorpal#highlight(<bang>0, <f-args>)
 command! -count -nargs=0 CPReset call colorpal#reset()
 command! -count -nargs=0 CPNegative call colorpal#negative()
 command! -count -nargs=0 CPInvert call colorpal#invert()
